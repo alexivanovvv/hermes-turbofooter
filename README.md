@@ -23,6 +23,17 @@ Everything is switched from the chat with **`/turbofooter`**. The stock `/footer
 
 ## Install
 
+One command per agent:
+
+| Agent | Command |
+|---|---|
+| Hermes | `hermes plugins install alexivanovvv/turbofooter` |
+| OpenClaw | `openclaw plugins install git:alexivanovvv/turbofooter --accept-capabilities` |
+
+Then enable it and restart the gateway. Full steps for OpenClaw: [OpenClaw version](#openclaw-version).
+
+### Hermes
+
 ```bash
 hermes plugins install alexivanovvv/turbofooter
 hermes plugins enable turbofooter
