@@ -87,6 +87,8 @@ def test_command_usage_and_validation():
 
 
 class _Bot:
+    token = "111:secret"
+
     def __init__(self):
         self.calls = []
 
@@ -96,16 +98,35 @@ class _Bot:
 
 def test_restore_leaves_untouched_button_alone(tmp_path=None):
     import tempfile
-    from telegram import MenuButtonCommands
+    from telegram import MenuButtonDefault
     path = Path(tempfile.mkdtemp()) / "state.json"
     fp._state_file = lambda: path
     bot = _Bot()
     path.write_text('{"menu_buttons": {}}')
-    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonCommands))
+    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonDefault))
     assert bot.calls == []
-    path.write_text('{"menu_buttons": {"1": {"type": "web_app", "text": "Mine", "web_app": {"url": "https://e.x/"}}}}')
-    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonCommands))
-    assert bot.calls[-1].text == "Mine" and "1" not in fp._state()["menu_buttons"]
-    path.write_text('{"menu_buttons": {"1": null}}')
-    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonCommands))
-    assert isinstance(bot.calls[-1], MenuButtonCommands)
+    path.write_text('{"menu_buttons": {"111:1": {"type": "web_app", "text": "Mine", "web_app": {"url": "https://e.x/"}}}}')
+    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonDefault))
+    assert bot.calls[-1].text == "Mine" and "111:1" not in fp._state()["menu_buttons"]
+    path.write_text('{"menu_buttons": {"111:1": null, "222:1": null}}')
+    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonDefault))
+    assert isinstance(bot.calls[-1], MenuButtonDefault)
+    assert "222:1" in fp._state()["menu_buttons"]  # another bot's saved button is not touched
+
+
+class _Adapter:
+    def __init__(self, profile):
+        self._bot, self._owner_profile, self.resets = object(), profile, []
+
+    async def reset_footer_surface(self, chat_id, style, notice):
+        self.resets.append(chat_id)
+        return False
+
+
+def test_reset_only_touches_this_profiles_bot():
+    main, other = _Adapter(None), _Adapter("dude")
+    fp._adapters.clear()
+    fp._adapters.update((other, main))
+    asyncio.run(fp._reset_surface("telegram", 7, "menu", "n"))
+    assert main.resets == [7] and other.resets == []
+    fp._adapters.clear()

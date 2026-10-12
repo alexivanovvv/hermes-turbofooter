@@ -423,18 +423,25 @@ def _save_state(state: dict) -> None:
     _state_file().write_text(json.dumps(state, ensure_ascii=False, indent=1))
 
 
+def _chat_key(bot, chat_id) -> str:
+    """State key of one bot's chat: a gateway can run several Telegram bots (profiles) for one user."""
+    bot_id = str(getattr(bot, "token", "") or "").split(":")[0] or f"obj{id(bot)}"
+    return f"{bot_id}:{chat_id}"
+
+
 async def _remember_menu_button(bot, chat_id) -> None:
     state = _state()
     saved = state.setdefault("menu_buttons", {})
-    if str(chat_id) in saved:
+    key = _chat_key(bot, chat_id)
+    if key in saved:
         return
     with contextlib.suppress(Exception):
         current = await bot.get_chat_menu_button(chat_id=int(chat_id))
         raw = current.to_dict()
         # Never take our own leftover footer button for the chat's original one.
-        if raw.get("text") and raw.get("text") == (state.get("footer_text") or {}).get(str(chat_id)):
+        if raw.get("text") and raw.get("text") == (state.get("footer_text") or {}).get(key):
             raw = None
-        saved[str(chat_id)] = raw
+        saved[key] = raw
         _save_state(state)
 
 
@@ -442,9 +449,10 @@ async def _restore_menu_button(bot, chat_id, fallback_cls) -> None:
     from telegram import MenuButton
     state = _state()
     saved = state.get("menu_buttons") or {}
-    if str(chat_id) not in saved:
+    key = _chat_key(bot, chat_id)
+    if key not in saved:
         return  # the footer never took this chat's button over: leave it alone
-    raw = saved.pop(str(chat_id))
+    raw = saved.pop(key)
     button = MenuButton.de_json(raw, bot) if raw else fallback_cls()
     await bot.set_chat_menu_button(chat_id=int(chat_id), menu_button=button)
     _save_state(state)
@@ -458,7 +466,7 @@ def _patch_telegram_class(cls) -> None:
     if cls.__dict__.get("_rfp_patched"):
         return
     try:
-        from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonCommands, MenuButtonWebApp,
+        from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonDefault, MenuButtonWebApp,
                               ReplyKeyboardMarkup, ReplyKeyboardRemove, WebAppInfo)
         for name in ("_handle_callback_query", "_handle_text_message", "_send_chunk_markdown_or_plain",
                      "_rich_payload_base", "_effective_update_message", "_is_user_authorized_from_message",
@@ -500,7 +508,7 @@ def _patch_telegram_class(cls) -> None:
                         return
                 await _remember_menu_button(self._bot, chat_id)
                 state = _state()
-                state.setdefault("footer_text", {})[str(chat_id)] = line
+                state.setdefault("footer_text", {})[_chat_key(self._bot, chat_id)] = line
                 _save_state(state)
                 await self._bot.set_chat_menu_button(
                     chat_id=int(chat_id),
@@ -512,7 +520,7 @@ def _patch_telegram_class(cls) -> None:
                 return False
             if style == "menu":
                 try:
-                    await _restore_menu_button(self._bot, chat_id, MenuButtonCommands)
+                    await _restore_menu_button(self._bot, chat_id, MenuButtonDefault)
                 except Exception as e:  # noqa: BLE001
                     logger.warning("turbofooter: menu button restore failed: %s", e)
             elif style in ("keyboard", "placeholder"):
@@ -631,14 +639,23 @@ async def _reset_surface(platform: str, chat_id, style: str, notice: str) -> boo
     """Undo what ``style`` left in the chat UI; True when ``notice`` was delivered as part of it."""
     if platform != "telegram" or not chat_id or style not in ("menu", "keyboard", "placeholder"):
         return False
+    profile = ""
+    with contextlib.suppress(Exception):
+        from gateway.session_context import get_session_env
+        profile = get_session_env("HERMES_SESSION_PROFILE") or ""
+    profile = "" if profile.strip() in ("", "default") else profile.strip()
     for adapter in list(_adapters):
         if not getattr(adapter, "_bot", None):
+            continue
+        # Only the bot this chat talks to (secondary profiles run their own Telegram bots).
+        if (getattr(adapter, "_owner_profile", None) or "") != profile:
             continue
         try:
             return bool(await adapter.reset_footer_surface(chat_id, style, notice.replace("**", "").replace("`", "")))
         except Exception as e:  # noqa: BLE001
             logger.warning("turbofooter: surface reset failed: %s", e)
-    logger.info("turbofooter: no live Telegram adapter to reset %s for chat %s", style, chat_id)
+    logger.info("turbofooter: no live Telegram adapter (profile %r) to reset %s for chat %s",
+                profile or "default", style, chat_id)
     return False
 
 

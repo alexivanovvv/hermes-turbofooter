@@ -99,7 +99,9 @@ as your own dashboard.
 
 The chat's previous menu button (say, a web app you set up yourself, or Telegram's default command menu)
 is saved the first time the `menu` style takes it over and restored when you switch to another style or turn
-the footer off. It is stored in `~/.hermes/plugin-data/turbofooter/state.json`.
+the footer off. It is stored per bot and chat in `~/.hermes/plugin-data/turbofooter/state.json`, so with
+several [profiles](https://github.com/NousResearch/hermes-agent) running their own Telegram bots, `/turbofooter`
+only touches the button of the bot you sent it to.
 
 ## Limitations
 
