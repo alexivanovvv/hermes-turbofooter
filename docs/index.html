@@ -83,7 +83,7 @@
             '<div class="bar"><i class="' + cls(q) + '" style="width:' + Math.min(100, q) + '%"></i></div>' +
             (r ? '<div class="sub">Resets in <b id="left">…</b> · at <span id="at"></span></div>' : "") + '</div>';
   }
-  if (!html) html = '<div class="empty">No footer data in this link yet.<br>It appears after the bot\'s next reply.</div>';
+  if (!html) html = '<div class="empty">The footer isn\'t on this button right now.<br>Its numbers show up after the bot\'s next reply in the <b>menu</b> style.<br><br>Send <b>/turbofooter</b> in the chat for settings.</div>';
   if (ts) html += '<div class="sub" style="text-align:center">Updated <span id="ago"></span></div>';
   document.getElementById("app").innerHTML = html;
   function tick() {

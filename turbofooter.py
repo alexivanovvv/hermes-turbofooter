@@ -41,6 +41,9 @@ _EFFORT_SHORT = {"minimal": "min", "medium": "med", "xhigh": "xhigh", "none": "o
 # Static, backend-less page that renders the footer numbers passed in its query string (see docs/index.html).
 # Point display.runtime_footer.menu_url at your own https page to open that instead.
 DEFAULT_MENU_URL = "https://alexivanovvv.github.io/hermes-turbofooter/"
+# Menu button text while the footer is not in it (footer off / another style); "restore" = the chat's
+# previous button instead.
+DEFAULT_MENU_IDLE = "/turbofooter"
 KEY_PREFIX = "📊 "  # reply-keyboard taps arrive as text with this prefix and are swallowed
 SEP = " · "
 USAGE = ("`/turbofooter` — runtime footer settings\n"
@@ -48,7 +51,8 @@ USAGE = ("`/turbofooter` — runtime footer settings\n"
          "Style: `/turbofooter text|button|menu|keyboard|placeholder`\n"
          "Fields: `/turbofooter fields model,effort,ctx,quota_pct,quota_left`\n"
          "Menu button fields: `/turbofooter menu-fields ctx,quota_pct,quota_left`\n"
-         "Menu button link: `/turbofooter url https://…` or `/turbofooter url default`")
+         "Menu button link: `/turbofooter url https://…` or `/turbofooter url default`\n"
+         "Menu button when idle: `/turbofooter idle <text>` · `idle restore` · `idle default`")
 
 _applied: list[str] = []
 _failed: list[str] = []
@@ -184,7 +188,8 @@ def _patch_runtime_footer():
     def resolve_footer_config(user_config=None, platform_key=None):
         resolved = orig_resolve(user_config, platform_key)
         resolved.update({"style": "text", "timezone": "", "menu_url": DEFAULT_MENU_URL, "separator": SEP,
-                         "menu_fields": list(DEFAULT_MENU_FIELDS), "menu_data": None})
+                         "menu_fields": list(DEFAULT_MENU_FIELDS), "menu_data": None,
+                         "menu_idle": DEFAULT_MENU_IDLE})
         cfg = (user_config or {}).get("display") or {}
         plat = (cfg.get("platforms") or {}).get(platform_key) if platform_key else None
         for section in (cfg.get("runtime_footer"), plat.get("runtime_footer") if isinstance(plat, dict) else None):
@@ -198,6 +203,8 @@ def _patch_runtime_footer():
                 resolved["timezone"] = section["timezone"]
             if isinstance(section.get("menu_fields"), list) and section["menu_fields"]:
                 resolved["menu_fields"] = [str(f) for f in section["menu_fields"]]
+            if isinstance(section.get("menu_idle"), str) and section["menu_idle"].strip():
+                resolved["menu_idle"] = section["menu_idle"].strip()[:64]
             if isinstance(section.get("menu_data"), bool):
                 resolved["menu_data"] = section["menu_data"]
             if isinstance(section.get("separator"), str) and section["separator"]:
@@ -459,6 +466,20 @@ async def _restore_menu_button(bot, chat_id, fallback_cls) -> None:
     logger.info("turbofooter: chat %s menu button restored (%s)", chat_id, type(button).__name__)
 
 
+async def _idle_menu_button(bot, chat_id, idle: str, url: str, fallback_cls, only_if_taken: bool = False) -> None:
+    """Hand the menu button back when the footer leaves it: show ``idle`` text, or ``restore`` the original."""
+    if (idle or "").lower() == "restore":
+        await _restore_menu_button(bot, chat_id, fallback_cls)
+        return
+    from telegram import MenuButtonWebApp, WebAppInfo
+    if only_if_taken and _chat_key(bot, chat_id) not in (_state().get("menu_buttons") or {}):
+        return
+    await _remember_menu_button(bot, chat_id)  # keep the original for a later "idle restore"
+    await bot.set_chat_menu_button(chat_id=int(chat_id), menu_button=MenuButtonWebApp(
+        text=idle or DEFAULT_MENU_IDLE, web_app=WebAppInfo(url=url or DEFAULT_MENU_URL)))
+    logger.info("turbofooter: chat %s menu button idle (%r)", chat_id, idle)
+
+
 _adapters: "weakref.WeakSet" = weakref.WeakSet()  # live TelegramAdapter instances (for /turbofooter resets)
 
 
@@ -514,15 +535,16 @@ def _patch_telegram_class(cls) -> None:
                     chat_id=int(chat_id),
                     menu_button=MenuButtonWebApp(text=line, web_app=WebAppInfo(url=_menu_url(footer))))
 
-        async def reset_footer_surface(self, chat_id, style, notice):
+        async def reset_footer_surface(self, chat_id, style, notice, idle=None, url=None, only_if_taken=False):
             """Undo what a style left in the chat UI; True when ``notice`` was delivered here."""
             if not self._bot:
                 return False
             if style == "menu":
                 try:
-                    await _restore_menu_button(self._bot, chat_id, MenuButtonDefault)
+                    await _idle_menu_button(self._bot, chat_id, idle or DEFAULT_MENU_IDLE, url, MenuButtonDefault,
+                                            only_if_taken)
                 except Exception as e:  # noqa: BLE001
-                    logger.warning("turbofooter: menu button restore failed: %s", e)
+                    logger.warning("turbofooter: menu button reset failed: %s", e)
             elif style in ("keyboard", "placeholder"):
                 await self._bot.send_message(chat_id=int(chat_id), text=notice, reply_markup=ReplyKeyboardRemove())
                 return True
@@ -635,7 +657,8 @@ def _save_leaf(leaf: str, value) -> None:
     _write_raw_config_leaf(_config_path(), ("display", "runtime_footer", leaf), value)
 
 
-async def _reset_surface(platform: str, chat_id, style: str, notice: str) -> bool:
+async def _reset_surface(platform: str, chat_id, style: str, notice: str, effective: Optional[dict] = None,
+                         only_if_taken: bool = False) -> bool:
     """Undo what ``style`` left in the chat UI; True when ``notice`` was delivered as part of it."""
     if platform != "telegram" or not chat_id or style not in ("menu", "keyboard", "placeholder"):
         return False
@@ -651,7 +674,9 @@ async def _reset_surface(platform: str, chat_id, style: str, notice: str) -> boo
         if (getattr(adapter, "_owner_profile", None) or "") != profile:
             continue
         try:
-            return bool(await adapter.reset_footer_surface(chat_id, style, notice.replace("**", "").replace("`", "")))
+            return bool(await adapter.reset_footer_surface(
+                chat_id, style, notice.replace("**", "").replace("`", ""), idle=(effective or {}).get("menu_idle"),
+                url=(effective or {}).get("menu_url"), only_if_taken=only_if_taken))
         except Exception as e:  # noqa: BLE001
             logger.warning("turbofooter: surface reset failed: %s", e)
     logger.info("turbofooter: no live Telegram adapter (profile %r) to reset %s for chat %s",
@@ -688,14 +713,16 @@ async def turbofooter_command(raw_args: str = "") -> Optional[str]:
         status = (f"📎 Runtime footer: **{'on' if effective.get('enabled') else 'off'}** · style `{style}`\n"
                   f"Fields: `{', '.join(effective.get('fields') or [])}`\n"
                   f"Menu button fields: `{', '.join(effective.get('menu_fields') or DEFAULT_MENU_FIELDS)}`\n"
-                  f"Menu button opens: {'built-in details page' if url == DEFAULT_MENU_URL else f'`{url}`'}")
+                  f"Menu button opens: {'built-in details page' if url == DEFAULT_MENU_URL else f'`{url}`'}\n"
+                  f"Menu button when idle: " + ("the chat's previous button" if str(effective.get("menu_idle")).lower()
+                                                == "restore" else f"`{effective.get('menu_idle') or DEFAULT_MENU_IDLE}`"))
         return status if low in ("status", "?") else status + "\n\n" + USAGE
     if low in ("on", "off"):
         err = save("enabled", low == "on")
         if err:
             return err
         reply = f"📎 Runtime footer: **{low}** · style `{style}`"
-        if low == "off" and await _reset_surface(platform, chat_id, style, reply):
+        if low == "off" and await _reset_surface(platform, chat_id, style, reply, effective):
             return None
         return reply
     if low in FOOTER_STYLES:
@@ -706,7 +733,7 @@ async def turbofooter_command(raw_args: str = "") -> Optional[str]:
             "" if effective.get("enabled") else " (footer is off — `/turbofooter on`)")
         if low != "text" and platform and platform != "telegram":
             notice += f"\n(only Telegram supports `{low}`; {platform} keeps the text footer)"
-        if style != low and await _reset_surface(platform, chat_id, style, notice):
+        if style != low and await _reset_surface(platform, chat_id, style, notice, effective):
             return None
         return notice
     head, _, rest = low.partition(" ")
@@ -723,4 +750,22 @@ async def turbofooter_command(raw_args: str = "") -> Optional[str]:
         if not value.startswith("https://"):
             return "Menu button link must be an `https://` URL (Telegram web-app rule)"
         return save("menu_url", value) or f"📎 Menu button opens `{value}`"
+    if head == "idle":
+        value = arg.partition(" ")[2].strip()
+        if not value:
+            return "Usage: `/turbofooter idle <text>` · `idle restore` · `idle default`"
+        if value.lower() == "default":
+            value = None
+        elif value.lower() == "restore":
+            value = "restore"
+        value = value[:64] if value else None
+        err = save("menu_idle", value)
+        if err:
+            return err
+        reply = ("📎 Idle menu button: the chat's previous button" if value == "restore"
+                 else f"📎 Idle menu button: `{value or DEFAULT_MENU_IDLE}`")
+        if not (effective.get("enabled") and style == "menu"):  # idle right now: show it at once
+            await _reset_surface(platform, chat_id, "menu", reply,
+                                 {**effective, "menu_idle": value or DEFAULT_MENU_IDLE}, only_if_taken=True)
+        return reply
     return USAGE

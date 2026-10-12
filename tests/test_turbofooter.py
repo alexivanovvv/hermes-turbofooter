@@ -118,7 +118,7 @@ class _Adapter:
     def __init__(self, profile):
         self._bot, self._owner_profile, self.resets = object(), profile, []
 
-    async def reset_footer_surface(self, chat_id, style, notice):
+    async def reset_footer_surface(self, chat_id, style, notice, **kw):
         self.resets.append(chat_id)
         return False
 
@@ -130,3 +130,32 @@ def test_reset_only_touches_this_profiles_bot():
     asyncio.run(fp._reset_surface("telegram", 7, "menu", "n"))
     assert main.resets == [7] and other.resets == []
     fp._adapters.clear()
+
+
+class _IdleBot(_Bot):
+    async def get_chat_menu_button(self, chat_id):
+        from telegram import MenuButtonWebApp, WebAppInfo
+        return MenuButtonWebApp(text="Mine", web_app=WebAppInfo(url="https://e.x/"))
+
+
+def test_idle_button_text_and_restore():
+    import tempfile
+    from telegram import MenuButtonDefault
+    path = Path(tempfile.mkdtemp()) / "state.json"
+    fp._state_file = lambda: path
+    path.write_text("{}")
+    bot = _IdleBot()
+    asyncio.run(fp._idle_menu_button(bot, 1, "Hi", "https://e.x/p", MenuButtonDefault, only_if_taken=True))
+    assert bot.calls == []  # never taken over: left alone
+    asyncio.run(fp._idle_menu_button(bot, 1, "Hi", "https://e.x/p", MenuButtonDefault))
+    assert bot.calls[-1].text == "Hi" and bot.calls[-1].web_app.url == "https://e.x/p"
+    assert fp._state()["menu_buttons"]["111:1"]["text"] == "Mine"  # original kept for "restore"
+    asyncio.run(fp._idle_menu_button(bot, 1, "restore", None, MenuButtonDefault))
+    assert bot.calls[-1].text == "Mine" and not fp._state()["menu_buttons"]
+
+
+def test_menu_idle_config():
+    resolve_footer_config = rf.resolve_footer_config
+    assert resolve_footer_config({}, "telegram")["menu_idle"] == "/turbofooter"
+    cfg = {"display": {"runtime_footer": {"menu_idle": "  📊 Hermes  "}}}
+    assert resolve_footer_config(cfg, "telegram")["menu_idle"] == "📊 Hermes"

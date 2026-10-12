@@ -48,6 +48,7 @@ Update: `hermes plugins update turbofooter` and restart the gateway. Remove: `he
 | `/turbofooter fields model,effort,ctx,quota_pct,quota_left` | Fields of the full line |
 | `/turbofooter menu-fields ctx,quota_pct,quota_left` | Fields of the compact menu-button line |
 | `/turbofooter url https://…` | Page the menu button opens; `/turbofooter url default` returns to the built-in details page |
+| `/turbofooter idle <text>` | Menu button text while the footer is not on it (default `/turbofooter`); `idle restore` brings back the chat's previous button instead, `idle default` resets |
 
 Settings are saved globally in `config.yaml` and apply from the next reply.
 
@@ -84,6 +85,7 @@ display:
     menu_fields: [ctx, quota_pct, quota_left]
     menu_url: https://example.com/    # optional, must be https; default: built-in details page
     menu_data: false                  # optional: append footer numbers to a custom menu_url too
+    menu_idle: /turbofooter           # optional: menu button text when the footer is off or in another style; "restore" = previous button
     separator: " · "                  # optional
     timezone: Europe/Berlin           # optional, only for session_reset; default: top-level timezone or server time
 ```
@@ -97,9 +99,11 @@ no backend, stores nothing and sends nothing anywhere. You can host your own cop
 it (set `menu_data: true` so it still gets the numbers), or point `menu_url` at any page of yours, such
 as your own dashboard.
 
-The chat's previous menu button (say, a web app you set up yourself, or Telegram's default command menu)
-is saved the first time the `menu` style takes it over and restored when you switch to another style or turn
-the footer off. It is stored per bot and chat in `~/.hermes/plugin-data/turbofooter/state.json`, so with
+When you turn the footer off or switch to another style, the menu button stays a web-app button labelled
+`/turbofooter` (set your own label with `/turbofooter idle <text>`, up to 64 characters) that opens the same
+page. With `/turbofooter idle restore` the chat's previous menu button (say, a web app you set up yourself, or
+Telegram's default command menu) comes back instead: it is saved the first time the `menu` style takes the
+button over. It is stored per bot and chat in `~/.hermes/plugin-data/turbofooter/state.json`, so with
 several [profiles](https://github.com/NousResearch/hermes-agent) running their own Telegram bots, `/turbofooter`
 only touches the button of the bot you sent it to.
 
