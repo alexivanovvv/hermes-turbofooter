@@ -766,6 +766,7 @@ async def turbofooter_command(raw_args: str = "") -> Optional[str]:
                  else f"📎 Idle menu button: `{value or DEFAULT_MENU_IDLE}`")
         if not (effective.get("enabled") and style == "menu"):  # idle right now: show it at once
             await _reset_surface(platform, chat_id, "menu", reply,
-                                 {**effective, "menu_idle": value or DEFAULT_MENU_IDLE}, only_if_taken=True)
+                                 {**effective, "menu_idle": value or DEFAULT_MENU_IDLE},
+                                 only_if_taken=style != "menu")  # other styles: only a button we took before
         return reply
     return USAGE
