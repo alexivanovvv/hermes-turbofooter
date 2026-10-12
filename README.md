@@ -1,6 +1,7 @@
-# TurboFooter for Hermes
+# TurboFooter for Hermes and OpenClaw
 
-A richer **runtime footer** for the [Hermes agent](https://github.com/NousResearch/hermes-agent) gateway.
+A richer **runtime footer** for the [Hermes agent](https://github.com/NousResearch/hermes-agent) gateway
+and for [OpenClaw](https://github.com/openclaw/openclaw) (see [OpenClaw version](#openclaw-version)).
 
 The stock footer is a single line at the end of each reply (`gpt-5.6 · 67%`). TurboFooter adds more
 fields and, on Telegram, lets you choose **where** the footer lives, so your replies stay clean for
@@ -23,7 +24,7 @@ Everything is switched from the chat with **`/turbofooter`**. The stock `/footer
 ## Install
 
 ```bash
-hermes plugins install alexivanovvv/hermes-turbofooter
+hermes plugins install alexivanovvv/turbofooter
 hermes plugins enable turbofooter
 systemctl --user restart hermes-gateway   # or however you run `hermes gateway run`
 ```
@@ -93,7 +94,7 @@ display:
 ### The menu button and its details page
 
 Telegram only lets a bot put custom text on the menu button if the button opens an `https` web page. By
-default it opens the plugin's static [details page](https://alexivanovvv.github.io/hermes-turbofooter/)
+default it opens the plugin's static [details page](https://alexivanovvv.github.io/turbofooter/)
 (source: [`docs/index.html`](docs/index.html)). The numbers travel in the link's query string; the page has
 no backend, stores nothing and sends nothing anywhere. You can host your own copy and point `menu_url` at
 it (set `menu_data: true` so it still gets the numbers), or point `menu_url` at any page of yours, such
@@ -125,11 +126,26 @@ only touches the button of the bot you sent it to.
   updating Hermes.
 - Tested with Hermes 0.21.4, Python 3.14, python-telegram-bot 22.7.
 
+## OpenClaw version
+
+The [`openclaw/`](openclaw/) folder holds a native OpenClaw plugin with the same fields, `/turbofooter`
+command and details page, in the `text`, `button` and `menu` styles (OpenClaw plugins cannot set a reply
+keyboard, so `keyboard` and `placeholder` are Hermes-only):
+
+```bash
+git clone https://github.com/alexivanovvv/turbofooter.git
+openclaw plugins install ./turbofooter/openclaw --accept-capabilities
+openclaw plugins enable turbofooter
+openclaw gateway restart
+```
+
+Details, configuration and limitations: [openclaw/README.md](openclaw/README.md).
+
 ## Development
 
 ```bash
 # from a Hermes checkout (hermes-agent on sys.path)
-python -m pytest path/to/hermes-turbofooter/tests
+python -m pytest path/to/turbofooter/tests
 ```
 
 ## License

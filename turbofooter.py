@@ -40,7 +40,7 @@ KNOWN_FIELDS = ("model", "effort", "context_pct", "ctx", "ctx_tokens", "session_
 _EFFORT_SHORT = {"minimal": "min", "medium": "med", "xhigh": "xhigh", "none": "off"}
 # Static, backend-less page that renders the footer numbers passed in its query string (see docs/index.html).
 # Point display.runtime_footer.menu_url at your own https page to open that instead.
-DEFAULT_MENU_URL = "https://alexivanovvv.github.io/hermes-turbofooter/"
+DEFAULT_MENU_URL = "https://alexivanovvv.github.io/turbofooter/"
 # Menu button text while the footer is not in it (footer off / another style); "restore" = the chat's
 # previous button instead.
 DEFAULT_MENU_IDLE = "/turbofooter"

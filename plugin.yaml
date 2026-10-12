@@ -4,7 +4,7 @@ kind: standalone
 version: 0.1.0
 author: Alex Ivanov
 license: MIT
-homepage: https://github.com/alexivanovvv/hermes-turbofooter
+homepage: https://github.com/alexivanovvv/turbofooter
 description: >
   Richer runtime footer for the Hermes gateway: reasoning effort, context share/tokens, Codex 5-hour quota
   with a reset countdown, and on Telegram a choice of where the footer lives - inside the message (stock),

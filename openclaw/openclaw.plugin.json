@@ -1,0 +1,22 @@
+{
+  "id": "turbofooter",
+  "name": "TurboFooter",
+  "description": "Runtime footer on agent replies: model, reasoning effort, context window, Codex 5-hour quota with a reset countdown; in the text, an inline button under the reply or the Telegram chat menu button. Command /turbofooter.",
+  "version": "0.1.0",
+  "activation": { "onStartup": true },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean" },
+      "style": { "type": "string", "enum": ["text", "button", "menu"] },
+      "fields": { "type": "array", "items": { "type": "string" } },
+      "menu_fields": { "type": "array", "items": { "type": "string" } },
+      "menu_url": { "type": "string", "pattern": "^https://" },
+      "menu_data": { "type": "boolean" },
+      "menu_idle": { "type": "string", "maxLength": 64 },
+      "separator": { "type": "string" },
+      "timezone": { "type": "string" }
+    }
+  }
+}
