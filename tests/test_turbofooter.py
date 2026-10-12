@@ -84,3 +84,28 @@ def test_command_usage_and_validation():
     run("url default") ; assert saved["menu_url"] is None
     run("button") ; assert saved["style"] == "button"
     run("off") ; assert saved["enabled"] is False
+
+
+class _Bot:
+    def __init__(self):
+        self.calls = []
+
+    async def set_chat_menu_button(self, chat_id, menu_button):
+        self.calls.append(menu_button)
+
+
+def test_restore_leaves_untouched_button_alone(tmp_path=None):
+    import tempfile
+    from telegram import MenuButtonCommands
+    path = Path(tempfile.mkdtemp()) / "state.json"
+    fp._state_file = lambda: path
+    bot = _Bot()
+    path.write_text('{"menu_buttons": {}}')
+    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonCommands))
+    assert bot.calls == []
+    path.write_text('{"menu_buttons": {"1": {"type": "web_app", "text": "Mine", "web_app": {"url": "https://e.x/"}}}}')
+    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonCommands))
+    assert bot.calls[-1].text == "Mine" and "1" not in fp._state()["menu_buttons"]
+    path.write_text('{"menu_buttons": {"1": null}}')
+    asyncio.run(fp._restore_menu_button(bot, 1, MenuButtonCommands))
+    assert isinstance(bot.calls[-1], MenuButtonCommands)

@@ -441,7 +441,10 @@ async def _remember_menu_button(bot, chat_id) -> None:
 async def _restore_menu_button(bot, chat_id, fallback_cls) -> None:
     from telegram import MenuButton
     state = _state()
-    raw = (state.get("menu_buttons") or {}).pop(str(chat_id), None)
+    saved = state.get("menu_buttons") or {}
+    if str(chat_id) not in saved:
+        return  # the footer never took this chat's button over: leave it alone
+    raw = saved.pop(str(chat_id))
     button = MenuButton.de_json(raw, bot) if raw else fallback_cls()
     await bot.set_chat_menu_button(chat_id=int(chat_id), menu_button=button)
     _save_state(state)
