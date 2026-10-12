@@ -59,9 +59,9 @@ version supports). TurboFooter adds:
 | Field | Example | Meaning |
 |---|---|---|
 | `effort` | `med` | Reasoning effort of the session (`min`, `low`, `med`, `high`, `xhigh`, `off`) |
-| `ctx` | `🅲 72%` | Share of the context window used |
+| `ctx` | `🅲 72%` | Percent of the context window in use |
 | `ctx_tokens` | `🅲 118K/272K` | Context tokens used / window size |
-| `quota_pct` | `⏱ 5h: 11%` | Share of the 5-hour quota used |
+| `quota_pct` | `⏱ 5h: 11%` | Percent of the 5-hour quota used |
 | `quota_left` | `↻ 4:42` | Time left until the 5-hour window resets (h:mm countdown) |
 | `quota_5h` | `⏱ 11% (↻ 4:42 /5h)` | Both in one field |
 | `session_pct` | `5h 11%` | Older short form of `quota_pct` |
@@ -72,7 +72,7 @@ In the `menu` style the button shows only about 20 characters, so it uses `menu_
 
 ## Configuration
 
-All keys live under `display.runtime_footer` in `~/.hermes/config.yaml` (per-platform overrides under
+All keys live under `display.runtime_footer` in your Hermes `config.yaml` (per-platform overrides under
 `display.platforms.<platform>.runtime_footer` work too):
 
 ```yaml
