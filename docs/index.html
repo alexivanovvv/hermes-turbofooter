@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hermes runtime footer</title>
+<meta name="description" content="Details of the Hermes agent runtime footer: model, reasoning effort, context window and 5-hour quota with a live reset countdown.">
+<meta name="theme-color" content="#17212b">
+<link rel="canonical" href="https://alexivanovvv.github.io/hermes-turbofooter/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="https://alexivanovvv.github.io/hermes-turbofooter/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Hermes TurboFooter">
+<meta property="og:title" content="Hermes runtime footer">
+<meta property="og:description" content="Model, effort, context and 5-hour quota of your Hermes agent at a glance.">
+<meta property="og:url" content="https://alexivanovvv.github.io/hermes-turbofooter/">
+<meta property="og:image" content="https://alexivanovvv.github.io/hermes-turbofooter/social.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Hermes runtime footer">
+<meta name="twitter:description" content="Model, effort, context and 5-hour quota of your Hermes agent at a glance.">
+<meta name="twitter:image" content="https://alexivanovvv.github.io/hermes-turbofooter/social.png">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #17212b);
+    --fg: var(--tg-theme-text-color, #f5f5f5);
+    --hint: var(--tg-theme-hint-color, #8a96a3);
+    --card: var(--tg-theme-secondary-bg-color, #232e3c);
+    --accent: var(--tg-theme-button-color, #5288c1);
+    --accent-fg: var(--tg-theme-button-text-color, #ffffff);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 32px; background: var(--bg); color: var(--fg);
+         font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  h1 { font-size: 15px; font-weight: 600; color: var(--hint); margin: 0 0 14px; letter-spacing: .02em; text-transform: uppercase; }
+  .card { background: var(--card); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .label { color: var(--hint); font-size: 14px; }
+  .value { font-weight: 600; text-align: right; word-break: break-all; }
+  .big { font-size: 28px; font-weight: 700; }
+  .bar { height: 8px; border-radius: 4px; background: rgba(127,127,127,.25); overflow: hidden; margin-top: 10px; }
+  .bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .4s; }
+  .bar > i.warn { background: #e0a030; } .bar > i.hot { background: #e05050; }
+  .sub { color: var(--hint); font-size: 13px; margin-top: 6px; }
+  .empty { color: var(--hint); text-align: center; padding: 40px 0; }
+  button { width: 100%; border: 0; border-radius: 12px; padding: 13px; font: inherit; font-weight: 600;
+           background: var(--accent); color: var(--accent-fg); margin-top: 8px; }
+  a { color: var(--accent); }
+  footer { color: var(--hint); font-size: 12px; text-align: center; margin-top: 18px; }
+</style>
+</head>
+<body>
+<h1>Runtime footer</h1>
+<div id="app"></div>
+<button id="close" type="button">Close</button>
+<footer>Numbers come from the link your bot set; nothing is sent anywhere. ·
+  <a href="https://github.com/alexivanovvv/hermes-turbofooter" target="_blank" rel="noopener">turbofooter</a></footer>
+<script>
+(function () {
+  var tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+  var p = new URLSearchParams(location.search);
+  var num = function (k) { var v = p.get(k); return v === null || v === "" || isNaN(+v) ? null : +v; };
+  var model = p.get("m") || "", effort = p.get("e") || "";
+  var cu = num("cu"), ct = num("ct"), q = num("q"), r = num("r"), ts = num("ts");
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+  var tok = function (n) { return n >= 1e6 ? (n / 1e6).toFixed(2).replace(/\.?0+$/, "") + "M" : n >= 1000 ? Math.round(n / 1000) + "K" : String(n); };
+  var cls = function (pct) { return pct >= 90 ? "hot" : pct >= 70 ? "warn" : ""; };
+  var html = "";
+  if (model || effort) {
+    html += '<div class="card"><div class="row"><span class="label">Model</span><span class="value">' + esc(model || "—") + '</span></div>' +
+            (effort ? '<div class="row" style="margin-top:8px"><span class="label">Reasoning effort</span><span class="value">' + esc(effort) + '</span></div>' : "") + '</div>';
+  }
+  if (ct) {
+    var cp = Math.max(0, Math.min(100, Math.round((cu || 0) / ct * 100)));
+    html += '<div class="card"><div class="row"><span class="label">Context</span><span class="big">' + cp + '%</span></div>' +
+            '<div class="bar"><i class="' + cls(cp) + '" style="width:' + cp + '%"></i></div>' +
+            '<div class="sub">' + tok(cu || 0) + ' / ' + tok(ct) + ' tokens</div></div>';
+  }
+  if (q !== null) {
+    html += '<div class="card"><div class="row"><span class="label">5-hour quota used</span><span class="big">' + q + '%</span></div>' +
+            '<div class="bar"><i class="' + cls(q) + '" style="width:' + Math.min(100, q) + '%"></i></div>' +
+            (r ? '<div class="sub">Resets in <b id="left">…</b> · at <span id="at"></span></div>' : "") + '</div>';
+  }
+  if (!html) html = '<div class="empty">No footer data in this link yet.<br>It appears after the bot\'s next reply.</div>';
+  if (ts) html += '<div class="sub" style="text-align:center">Updated <span id="ago"></span></div>';
+  document.getElementById("app").innerHTML = html;
+  function tick() {
+    var now = Date.now() / 1000, el;
+    if (r && (el = document.getElementById("left"))) {
+      var s = Math.max(0, Math.round(r - now));
+      el.textContent = Math.floor(s / 3600) + ":" + String(Math.floor(s % 3600 / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+      document.getElementById("at").textContent = new Date(r * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+    }
+    if (ts && (el = document.getElementById("ago"))) {
+      var a = Math.max(0, Math.round(now - ts));
+      el.textContent = a < 60 ? "just now" : a < 3600 ? Math.floor(a / 60) + " min ago" : Math.floor(a / 3600) + " h ago";
+    }
+  }
+  tick(); setInterval(tick, 1000);
+  document.getElementById("close").onclick = function () { if (tg) tg.close(); else history.back(); };
+})();
+</script>
+</body>
+</html>
