@@ -1,0 +1,27 @@
+{
+  "name": "openclaw-turbofooter",
+  "version": "0.1.0",
+  "description": "TurboFooter for OpenClaw: runtime footer with model, reasoning effort, context and Codex 5h quota (root shim for `openclaw plugins install git:alexivanovvv/turbofooter`; code lives in openclaw/)",
+  "type": "module",
+  "license": "MIT",
+  "author": "Alex Ivanov",
+  "homepage": "https://github.com/alexivanovvv/turbofooter/tree/main/openclaw",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexivanovvv/turbofooter.git"
+  },
+  "files": [
+    "openclaw/index.js",
+    "openclaw/footer.js",
+    "openclaw.plugin.json",
+    "openclaw/README.md"
+  ],
+  "scripts": {
+    "test": "node --test openclaw/test/*.test.js"
+  },
+  "openclaw": {
+    "extensions": [
+      "./openclaw/index.js"
+    ]
+  }
+}

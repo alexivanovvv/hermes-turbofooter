@@ -133,11 +133,12 @@ command and details page, in the `text`, `button` and `menu` styles (OpenClaw pl
 keyboard, so `keyboard` and `placeholder` are Hermes-only):
 
 ```bash
-git clone https://github.com/alexivanovvv/turbofooter.git
-openclaw plugins install ./turbofooter/openclaw --accept-capabilities
+openclaw plugins install git:alexivanovvv/turbofooter --accept-capabilities
 openclaw plugins enable turbofooter
 openclaw gateway restart
 ```
+
+The root `package.json` and `openclaw.plugin.json` only point OpenClaw at `openclaw/`; Hermes ignores them.
 
 Details, configuration and limitations: [openclaw/README.md](openclaw/README.md).
 

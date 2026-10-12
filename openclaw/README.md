@@ -24,21 +24,23 @@ Everything is switched from the chat with **`/turbofooter`**. It works alongside
 Needs OpenClaw 2026.10 or newer (tested on 2026.10.2). The plugin uses no npm dependencies.
 
 ```bash
-git clone https://github.com/alexivanovvv/turbofooter.git
-openclaw plugins install ./turbofooter/openclaw --accept-capabilities
+openclaw plugins install git:alexivanovvv/turbofooter --accept-capabilities
 openclaw plugins enable turbofooter
 openclaw gateway restart        # or however you run the gateway
 ```
 
-OpenClaw warns that this is a local (unreviewed) source and asks to confirm (without a terminal, e.g. in a
+OpenClaw clones the repo and loads `openclaw/index.js` through the root `package.json`. From a local checkout
+use `openclaw plugins install ./turbofooter/openclaw --accept-capabilities` instead.
+
+OpenClaw warns that this is an unreviewed source and asks to confirm (without a terminal, e.g. in a
 script, add `--force`); read the code first if you like, it is two JavaScript files. To check it loaded:
 
 ```bash
 openclaw plugins inspect turbofooter --runtime   # expect status loaded, hook reply_payload_sending, command turbofooter
 ```
 
-Update: `git pull`, rerun the install command with `--force`, restart the gateway. With `--link` added to
-the install command OpenClaw uses the checkout in place, so `git pull` and a restart are enough.
+Update: `openclaw plugins update turbofooter`, restart the gateway. For a local checkout: `git pull`, rerun
+the install command with `--force` (or install once with `--link`, then `git pull` and a restart are enough).
 Remove: `openclaw plugins uninstall turbofooter`.
 
 ## Commands

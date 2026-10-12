@@ -168,3 +168,9 @@ test("command: settings persist; Hermes-only styles refused", async () => {
   const { cmd: again } = fakeApi(); // new process: overrides read back from state.json
   assert.match((await again.handler({ channel: "telegram", args: "status" })).text, /model, ctx_tokens/);
 });
+
+test("root manifest mirrors openclaw/ manifest (git: installs read the repo root)", () => {
+  const read = (p) => JSON.parse(fs.readFileSync(new URL(p, import.meta.url), "utf8"));
+  assert.deepEqual(read("../../openclaw.plugin.json"), read("../openclaw.plugin.json"));
+  assert.deepEqual(read("../../package.json").openclaw.extensions, ["./openclaw/index.js"]);
+});
